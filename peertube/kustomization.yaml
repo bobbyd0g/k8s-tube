@@ -1,0 +1,44 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: peertube
+
+generatorOptions:
+    disableNameSuffixHash: true
+
+secretGenerator:
+    - name: peertube-secret
+      literals:
+#          - POSTGRES_USER="peertube"
+#          - POSTGRES_PASSWORD=""
+#          - POSTGRES_DB="peertube"
+#          - PEERTUBE_DB_HOSTNAME="peertube-primary"
+#          - PEERTUBE_DB_USERNAME="peertube"
+#          - PEERTUBE_DB_PASSWORD=""
+#          - PEERTUBE_DB_PORT="5432"
+          - PEERTUBE_DB_SSL="true"
+          - PEERTUBE_WEBSERVER_HOSTNAME="peertube.example.com"
+          - PEERTUBE_SMTP_USERNAME="admin@example.com"
+          - PEERTUBE_SMTP_PASSWORD="example-password"
+          - PEERTUBE_SMTP_HOSTNAME="mail.example.com"
+          - PEERTUBE_SMTP_PORT="587"
+          - PEERTUBE_SMTP_FROM="noreply@example.com"
+          - PEERTUBE_SMTP_TLS="false"
+          - PEERTUBE_SMTP_DISABLE_STARTTLS="false"
+          - PEERTUBE_ADMIN_EMAIL="admin@example"
+          - PEERTUBE_OBJECT_STORAGE_ENABLED="true"
+          - PEERTUBE_OBJECT_STORAGE_ENDPOINT="example.com"
+          - PEERTUBE_OBJECT_STORAGE_REGION="example-region"
+          - PEERTUBE_OBJECT_STORAGE_STREAMING_PLAYLISTS_BUCKET_NAME="example-com-stream"
+          - PEERTUBE_OBJECT_STORAGE_STREAMING_PLAYLISTS_PREFIX="streaming/"
+          - PEERTUBE_OBJECT_STORAGE_VIDEOS_BUCKET_NAME="example-com-video"
+          - PEERTUBE_OBJECT_STORAGE_VIDEOS_PREFIX="videos/"
+          - AWS_ACCESS_KEY_ID="EXAMPLE-ID"
+          - AWS_SECRET_ACCESS_KEY="EXAMPLE-SCRET"
+          - PEERTUBE_INSTANCE_NAME="PeerTube Example Instance"
+          - PEERTUBE_INSTANCE_DESCRIPTION="Example Instance Description"
+
+resources:
+- deployment.yaml
+- service.yaml
+- ingress.yaml

@@ -1,0 +1,106 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: peertube
+  labels:
+    app: peertube
+spec:
+# Do not increase replicas until database initialization is complete, or it will corrupt and fail the next connection
+  replicas: 1
+  selector:
+    matchLabels:
+      app: peertube
+  template:
+    metadata:
+      labels:
+        app: peertube
+    spec:
+      containers:
+        - name: peertube
+          image: chocobozzz/peertube:v3.4.0-rc.1-buster
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+              name: http
+            - containerPort: 443
+              name: https
+            - containerPort: 9000
+              name: peertube
+            - containerPort: 1935
+              name: rtmp
+          envFrom:
+            - secretRef:
+                name: peertube-secret
+          env:
+# Get database creds from PGO-generated secret
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: peertube-pguser-peertube
+                  key: dbname
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: peertube-pguser-peertube
+                  key: user
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: peertube-pguser-peertube
+                  key: password
+# As far as I can tell, PeerTube will not accept a db name other than "peertube"
+            - name: PEERTUBE_DB_HOSTNAME
+              valueFrom:
+                secretKeyRef:
+                  name: peertube-pguser-peertube
+                  key: host
+            - name: PEERTUBE_DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: peertube-pguser-peertube
+                  key: user
+            - name: PEERTUBE_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: peertube-pguser-peertube
+                  key: password
+            - name: PEERTUBE_DB_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: peertube-pguser-peertube
+                  key: port
+# End of PGO values
+            - name: PEERTUBE_REDIS_HOSTNAME
+              value: "localhost"
+            - name: PEERTUBE_REDIS_AUTH
+              value: ""
+          volumeMounts:
+            - name: peertube-data
+              mountPath: /data
+        - name: redis
+          image: redis:6-alpine
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 6379
+              name: redis
+      volumes:
+        - name: peertube-data
+# This is probably best served by a fault-tolerant ReadWriteMany volume -- which takes some doing -- but for testing we
+# can use emptyDir because we expect videos to be immediately sent out to S3 storage. For RWO in prod, use StatefulSet
+          emptyDir: {}
+#
+#
+#         persistentVolumeClaim:
+#           claimName: peertube-data
+# ---
+# apiVersion: v1
+# kind: PersistentVolumeClaim
+# metadata:
+#   name: peertube-data
+# spec:
+#   accessModes: 
+#     - ReadWriteOnce
+#   resources:
+#     requests:
+#       storage: 10Gi
+

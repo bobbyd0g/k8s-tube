@@ -26,6 +26,7 @@ secretGenerator:
           - PEERTUBE_SMTP_TLS="false"
           - PEERTUBE_SMTP_DISABLE_STARTTLS="false"
           - PEERTUBE_ADMIN_EMAIL="admin@example"
+# Might as well specify the same bucket for both, because PeerTube is not separating them?
           - PEERTUBE_OBJECT_STORAGE_ENABLED="true"
           - PEERTUBE_OBJECT_STORAGE_ENDPOINT="example.com"
           - PEERTUBE_OBJECT_STORAGE_REGION="example-region"

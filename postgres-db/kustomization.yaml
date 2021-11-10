@@ -9,4 +9,4 @@ generatorOptions:
   disableNameSuffixHash: true
 
 resources:
-- ha-postgres.yaml
+- postgres.yaml

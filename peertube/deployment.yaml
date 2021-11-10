@@ -5,7 +5,7 @@ metadata:
   labels:
     app: peertube
 spec:
-# Do not increase replicas until database initialization is complete, or it will corrupt and fail the next connection
+# Do not increase replicas. PeerTube does not support horizontal scaling.
   replicas: 1
   selector:
     matchLabels:
@@ -32,7 +32,7 @@ spec:
             - secretRef:
                 name: peertube-secret
           env:
-# Get database creds from PGO-generated secret
+# Get database credentials from PGO-generated secret
             - name: POSTGRES_DB
               valueFrom:
                 secretKeyRef:
@@ -48,7 +48,6 @@ spec:
                 secretKeyRef:
                   name: peertube-pguser-peertube
                   key: password
-# As far as I can tell, PeerTube will not accept a db name other than "peertube"
             - name: PEERTUBE_DB_HOSTNAME
               valueFrom:
                 secretKeyRef:
@@ -83,24 +82,20 @@ spec:
           ports:
             - containerPort: 6379
               name: redis
+      nodeSelector:
+        appserver: peertube
       volumes:
         - name: peertube-data
-# This is probably best served by a fault-tolerant ReadWriteMany volume -- which takes some doing -- but for testing we
-# can use emptyDir because we expect videos to be immediately sent out to S3 storage. For RWO in prod, use StatefulSet
-          emptyDir: {}
-#
-#
-#         persistentVolumeClaim:
-#           claimName: peertube-data
-# ---
-# apiVersion: v1
-# kind: PersistentVolumeClaim
-# metadata:
-#   name: peertube-data
-# spec:
-#   accessModes: 
-#     - ReadWriteOnce
-#   resources:
-#     requests:
-#       storage: 10Gi
-
+        persistentVolumeClaim:
+          claimName: peertube-data
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: peertube-data
+spec:
+  accessModes: 
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi

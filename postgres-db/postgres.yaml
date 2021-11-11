@@ -1,0 +1,48 @@
+apiVersion: postgres-operator.crunchydata.com/v1beta1
+kind: PostgresCluster
+metadata:
+  name: peertube
+spec:
+  image: registry.developers.crunchydata.com/crunchydata/crunchy-postgres:centos8-13.4-1
+  postgresVersion: 13
+  instances:
+    - name: pgha1
+      replicas: 1
+      dataVolumeClaimSpec:
+        accessModes:
+        - "ReadWriteOnce"
+        resources:
+          requests:
+            storage: 10Gi
+        # storageClassName: block-storage-retain
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: appserver
+                operator: In
+                values:
+                - peertube
+  backups:
+    pgbackrest:
+      image: registry.developers.crunchydata.com/crunchydata/crunchy-pgbackrest:centos8-2.35-0
+      configuration:
+      - secret:
+          name: pgo-s3-creds
+      global:
+        repo1-path: /pgbackrest/postgres-operator/peertube/repo1
+# Backup-sets will be kept here for 22 days, meaning a full and all of its incrementals are deleted after that age is met
+        repo1-retention-full: "22"
+        repo1-retention-full-type: time
+      repos:
+# You will need to choose an S3 bucket for this
+      - name: repo1
+        s3:
+          bucket: "my-bucket"
+          endpoint: "my-bucket.my-region.my-endpoint.com"
+          region: "my-region"
+# CRON-formatted backup schedules, here a full backup every week on Monday morning at 1am and incrementals daily at 2am.
+        schedules:
+          full: "0 1 * * 1"
+          incremental: "0 2 * * *"

@@ -86,8 +86,8 @@ spec:
         appserver: peertube
       volumes:
         - name: peertube-data
-        persistentVolumeClaim:
-          claimName: peertube-data
+          persistentVolumeClaim:
+            claimName: peertube-data
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -99,3 +99,4 @@ spec:
   resources:
     requests:
       storage: 50Gi
+#   storageClassName: block-storage-retain

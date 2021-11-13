@@ -1,9 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
 namespace: peertube
+commonLabels:
+  peertube: instance01
 
 secretGenerator:
 - name: pgo-s3-creds
-  files:
-  - s3.conf
+  literals:
+  - repo1-s3-key=MY-ID
+  - repo1-s3-key-secret=MY-SECRET
 
 generatorOptions:
   disableNameSuffixHash: true

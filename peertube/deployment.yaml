@@ -75,25 +75,36 @@ spec:
           volumeMounts:
             - name: peertube-data
               mountPath: /data
+        - name: exporter
+          image: bobbyd0g/peertubeexporter
+          imagePullPolicy: Always
+          ports:
+          - containerPort: 9113
+            protocol: TCP
+          livenessProbe:
+            failureThreshold: 30
+            httpGet:
+              path: /
+              port: 9113
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            successThreshold: 1
+            timeoutSeconds: 3
         - name: redis
-          image: redis:6-alpine
+          image: redis:6
           imagePullPolicy: IfNotPresent
+          args: ["--appendonly", "yes", "--save", "120", "1", "--save", "30", "2"]
           ports:
             - containerPort: 6379
               name: redis
+          volumeMounts:
+            - name: redis-data
+              mountPath: /data
       volumes:
         - name: peertube-data
           persistentVolumeClaim:
             claimName: peertube-data
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: peertube-data
-spec:
-  accessModes: 
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 50Gi
-  storageClassName: default
+        - name: redis-data
+          persistentVolumeClaim:
+            claimName: redis-data

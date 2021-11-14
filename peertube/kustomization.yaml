@@ -52,9 +52,10 @@ secretGenerator:
   # - POSTGRES_PASSWORD="password"
 
 resources:
-- deployment.yaml
+- pvc.yaml
 - service.yaml
 - ingress.yaml
+- deployment.yaml
 
 patchesJson6902:
 # Patching deployment with a nodeSelector -- use a node / pool label from provider
@@ -67,7 +68,7 @@ patchesJson6902:
     - op: add
       path: /spec/template/spec/nodeSelector
       value:
-        appserver: peertube
+        node-pool: peertube
 # Patching your hostname into the Ingress
 - target:
     kind: Ingress
@@ -90,23 +91,8 @@ patches:
       labels:
         peertube: instance01
       annotations:  
-        cert-manager.io/cluster-issuer: "selfsigned"
+        cert-manager.io/cluster-issuer: "letsencrypt-mydomain-staging"
         cert-manager.io/acme-challenge-type: http01
-# Patching the PVC with values for access mode, capacity, and storageClass
-- patch: |-
-    apiVersion: v1
-    kind: PersistentVolumeClaim
-    metadata:
-      name: peertube-data
-      labels:
-        peertube: instance01
-    spec:
-      accessModes:
-        - ReadWriteOnce
-      resources:
-        requests:
-          storage: 50Gi
-      storageClassName: default
 
 generatorOptions:
   disableNameSuffixHash: true

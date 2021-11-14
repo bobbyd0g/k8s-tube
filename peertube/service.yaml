@@ -16,10 +16,14 @@ spec:
       targetPort: 25
       name: smtp
     - protocol: TCP
+      port: 1935
+      targetPort: 1935
+      name: rtmp
+    - protocol: TCP
       port: 9000
       targetPort: 9000
       name: peertube
     - protocol: TCP
-      name: rtmp
-      port: 1935
-      targetPort: 1935
+      port: 9113
+      targetPort: 9113
+      name: exporter

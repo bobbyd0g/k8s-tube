@@ -42,7 +42,7 @@ spec:
           region: "my-region"
         schedules:
           full: "0 1 * * 1"
-          incremental: "0 2 * * *"
+          incremental: "0 0 * * *"
   monitoring:
     pgmonitor:
       exporter:

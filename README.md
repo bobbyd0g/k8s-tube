@@ -1,80 +1,60 @@
 # PeerTube for Kubernetes
-This PeerTube distribution is the first of a number of components for the [fedi-k8s](https://github.com/bobbyd0g/fedi-k8s) project, which endeavors to create a well-documented turnkey Fediverse portal solution for easy deployment and maintenance. It can also be deployed standalone on a cluster that is already configured with the prerequisite software.
+This PeerTube distribution is part of the [fedi-k8s](https://github.com/bobbyd0g/fedi-k8s) project, which aims to create a fully-featured social media hub that is easy to deploy to any modern cloud provider. This is a straightforward single-node deployment that can be achieved with kubectl Kustomize. Our hope is that this means anyone who's willing to learn can produce real community-controlled social resources for all their family and friends, and we can take back the Internet from stifling, compromised corporate platforms.
 
-Made by [bobbyd0g](https://github.com/bobbyd0g) for the [Hellsite](https://hellsite.net), with big thanks to the [peertube-k8s](https://github.com/coopgo/peertube-k8s), [peertube-on-kubernetes](https://forge.extranet.logilab.fr/open-source/peertube-on-kubernetes), and [peertube-helm](https://git.lecygnenoir.info/LecygneNoir/peertube-helm) projects for their important work.
+Made by [bobbyd0g](https://github.com/bobbyd0g) for the [Hellsite](https://hellsite.net), with big thanks to the [peertube-k8s](https://github.com/coopgo/peertube-k8s), [peertube-on-kubernetes](https://forge.extranet.logilab.fr/open-source/peertube-on-kubernetes), [peertube-helm](https://git.lecygnenoir.info/LecygneNoir/peertube-helm) and [peertubeexporter](https://gitlab.com/synacksynack/opsperator/docker-peertubeexporter/) projects for their important work.
 
 Software used for this distribution includes:
 
-[Peertube](https://joinpeertube.org/) <br />
-[CrunchyData Postgres Operator v5](https://www.postgresql.org/about/news/pgo-the-crunchy-postgres-operator-v5-released-fully-declarative-postgres-2258/)<br />
-[Kubernetes NGINX Ingress Controller](https://kubernetes.github.io/ingress-nginx/)<br />
-[cert-manager](https://cert-manager.io/)<br />
-[redis](https://hub.docker.com/_/redis/)<br />
-
-## Features
-
-- Single-node PeerTube instance for Kubernetes, bound with nodeSelector
-- Automatically-maintained database on the same node for optimal performance
-- Easy to deploy in your typical cloud environment with block and object storage
-- PeerTube has direct access to the rest of your cluster for integration purposes
-- All major features are supported, including RTMP Live Streaming and live replay
-- Striving for a 100% declarative YAML workflow, with a few surmountable exceptions
-
-### Why build this stack?
-
-- Crunchy PGO v5 is a fully-declarative solution to automate the creation and maintenance of highly-available replicated PostgreSQL clusters, with scheduled backup to S3
-- cert-manager automates the issuance and maintenance of SSL certificates across all of your domains and applications, all using the same Kubernetes Ingress resources as...
-- Kubernetes NGINX Ingress Controller is fast, reliable, powerful, and easy to configure.
+[PeerTube](https://joinpeertube.org/) - [CrunchyData Postgres Operator v5](https://www.postgresql.org/about/news/pgo-the-crunchy-postgres-operator-v5-released-fully-declarative-postgres-2258/) - [Kubernetes NGINX Ingress Controller](https://kubernetes.github.io/ingress-nginx/) - [cert-manager](https://cert-manager.io/) - [redis](https://hub.docker.com/_/redis/) - [Prometheus](https://prometheus.io/)
 
 ### Requirements
 
-All requirements will be addressed by the fedi-k8s distribution:
-- Kubernetes NGINX Ingress Controller installed (with TCP support for live streaming)
-- CrunchyData Postgres Operator v5 installed to your cluster
-- cert-manager configured with your issuer and interface
-- Access to an SMTP server and account for outbound mail
-- It can be disabled, but we highly recommend using S3 object storage for videos.
-- This configuration will consume two volumes using your default StorageClass.
-
-### Limitations
-
-- PeerTube does not support horizontal scaling behind a load balancer. Don't increase replicas, or many things will break, even including configuration.
-- Livestreaming capacity is extremely limited -- how to integrate external infrastructure?
-- Still needs Prometheus monitoring. Outbound email will be provided centrally in fedi-k8s
-
-## Deployment
-
-This section will be worked out in more detail very shortly.
-- First, edit postgres.yaml to configure S3 storage, check the deployment.yaml PVC.
-- Add your values to the kustomization.yaml file; PGO fills the db details from secret
-- Install ingress-nginx with TCP services support. Connect external load balancer
+- You will need a working email address or delivery provider for this confiiguration, at least until the Postfix configuration is finished for fedi-k8s or on your own. You'll need some minimum of 64GB of block storage to do this right. S3 storage is also highly recommended.
+- PeerTube is going to do some heavy lifting, so you probably want quad-core / 4GB RAM or better for this job. PeerTube does not support horizontal scaling behind a load balancer, so don't add replicas, upsize the node running your server.
+- Install Kubernetes NGINX Ingress with TCP services configured, first to forward port 1935 for RTMP live streaming video. We can add more ports to the ConfigMap this generates later, or add UDP support with a fresh run of `helm upgrade`
 ```
 helm upgrade --install ingress-nginx ingress-nginx \
   --repo https://kubernetes.github.io/ingress-nginx \
   --namespace ingress-nginx --create-namespace \
-  -f values.yaml
+  --set tcp.1935="hellsite-peertube/peertube:1935" \
+  --set controller.metrics.enabled=true \
+  --set-string controller.podAnnotations."prometheus\.io/scrape"="true" \
+  --set-string controller.podAnnotations."prometheus\.io/port"="10254"
 ```
+- Check the LoadBalancer this creates with `kubectl get svc -o wide` and enter its external IP address into an A record for your domain name.
+- Install cert-manager and apply the [ClusterIssuer](https://cert-manager.io/docs/configuration/acme/) that will hand out your certificates to apps
 ```
-tcp:
-  1935: "peertube/peertube:1935"
+kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.6.0/cert-manager.yaml
 ```
-- Install cert-manager with default configuration, and apply your ClusterIssuer
-- Install Crunchy PGO v5 with default configuration
-- Create your namespace (default is "peertube")
-- Provision the database using Kustomize
+- Install Crunchy PGO v5 
 ```
-kubectl apply -k postgres-db
+git clone https://github.com/CrunchyData/postgres-operator-examples.git
+kubectl apply -k kustomize/install
 ```
-- Apply your TLS secret to the website namespace if you have one already.
-- Give the database a minute to initialize, then bring up the website.
+
+### Deployment
+
+Clone this repository into your working directory.
 ```
-kubectl apply -k peertube
+git clone https://github.com/bobbyd0g/k8s-tube.git
 ```
+- Edit `peertube/kustomization.yaml` with configuration for your instance. The patches toward the bottom allow us to keep most of our edits neatly confined to this file. Choose a unique namespace and label, especially if planning to run multiple instances. Look for the `value` you want to change, usually the last line(s).
+- Choose a nodeSelector that uniquely identifies the node you want this to run on. Your cloud provider will use some kind of `/metadata/labels/` that identifies the node pool it belongs to.
+- Patch in the correct hostname for your instance, and the ClusterIssuer you set up for cert-manager. For Let's Encrypt, remember to use the staging server until you're absolutely certain you're done testing, because production is limited to 50 certs issued per month. You can also add any more ingress annotations here.
+- Edit `pvc.yaml` with a storageClass that will `retain` detached volumes in case there's a problem.
+- Edit `postgres-db/kustomization.yaml` with the same namespace, labels, and S3 creds. (If you want a trustless workflow, you know what you're doing, separate out the secrets :) )
+- Edit `postgres.yaml` with the same `retain` -policy storageClass and nodeSelector (which is here broken out into `matchExpressions/key` and `matchExpressions/value`)
+- Your backup schedule is configured here by default to retain a backup set (a full and its incrementals) for 22 days under `repo1-retention-full` -- and using cron formatting under `schedules` below, for a default full weekly backup on 1am Monday morning and daily incrementals at midnight.
+
+- Create your namespace with `kubectl create namespace your-namespace`
+- Bring up the database with `kubectl apply -k postgres-db` and give it a few minutes to become Ready.
+- Bring up the website with `kubectl apply -k peertube` and look out for errors. Use `kubectl describe pod PODNAME` and `kubectl logs pod/PODNAME peertube` for troubleshooting.
 - Get the root password from logs
 ```
 kubectl get pod -n peertube
 kubectl logs peertube-pod peertube | grep -A1 root
 ```
-Log in, create your first user, and get posting!
+
+If you're having problems, you'll need to tear down both peertube with `kubectl delete -k peertube` and the database with `kubectl delete -k postgres-db` to do a clean re-initialization. The software used was chosen for particularly complete and accessible documentation. Beyond that, feel free to get in touch and we'll answer your questions as best we can. More docs and training material are forthcoming. Hope this helps!
 
 # k8s-tube
